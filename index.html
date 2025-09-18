@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Enhanced SSB Calculator</title>
+  <title>ssb_pointA_fix</title>
   <style>
     p {
       margin-top: 0.1em;
@@ -333,25 +333,52 @@
       resultDiv.innerHTML += "dlEarfcn=" + pointAData.dlEarfcn + ", ";
       resultDiv.innerHTML += "nDlCenterFreq=" + pointAData.nDlCenterFreq + ", ";
       resultDiv.innerHTML += "Kssb=" + Kssb + ", ";
-      resultDiv.innerHTML += "offsetToPointA=" + offsetToPointA;
+      resultDiv.innerHTML += "offsetToPointA=" + offsetToPointA + ", ";
+      resultDiv.innerHTML += "coreset0RB=" + coreset0RB + ", ";
+      resultDiv.innerHTML += "coreset0offset=" + coreset0offset;
       resultDiv.innerHTML += "</div>";
 
       // Additional details
       resultDiv.innerHTML += "<div class='closest-values'>";
+      resultDiv.innerHTML += "<strong>CORESET0 Configuration Details:</strong><br>";
+      if (bandInfo.band === 79) {
+        if (carrierBw >= 106) {
+          resultDiv.innerHTML += "Band n79 with BW≥106 RB → Using 38.213 Table 13-6 Index 4<br>";
+        } else {
+          resultDiv.innerHTML += "Band n79 with BW<106 RB → Using 38.213 Table 13-6 Index 4<br>";
+        }
+      } else {
+        if (carrierBw >= 48) {
+          resultDiv.innerHTML += "BW≥48 RB → Using 38.213 Table 13-4 Index 10 (Try to have 48 RB for CORESET0)<br>";
+        } else if (carrierBw >= 24) {
+          resultDiv.innerHTML += "24≤BW<48 RB → Using 38.213 Table 13-4 Index 0 (Best fit CORESET0)<br>";
+        } else {
+          resultDiv.innerHTML += "BW<24 RB → Using 38.213 Table 13-4 Index 0<br>";
+        }
+      }
       resultDiv.innerHTML += "<strong>Additional Information:</strong><br>";
       resultDiv.innerHTML += "Band: n" + bandInfo.band + "<br>";
       resultDiv.innerHTML += "Carrier Bandwidth: " + carrierBw + " RB<br>";
       resultDiv.innerHTML += "Subcarrier Spacing: " + subCarrierSpacing + " kHz<br>";
-      resultDiv.innerHTML += "CORESET0 RBs: " + coreset0RB + ", Offset: " + coreset0offset + "<br>";
       resultDiv.innerHTML += "Configuration Valid: " + (isValid && Kssb >= 0 ? "Yes" : "No");
       resultDiv.innerHTML += "</div>";
     }
   </script>
 
-  <h2>Enhanced SSB Calculator with Closest Value Finding</h2>
+  <h2>ssb_pointA_fix</h2>
   <div style="margin-bottom: 20px;">
-    <p><strong>Author:</strong> Enhanced by Claude based on Dustin_Chen's original work</p>
-    <p><strong>Purpose:</strong> Find closest valid SSB and PointA frequencies and calculate all related parameters</p>
+  
+  <style>
+    .author-info {
+      display: inline;
+      margin-right: 10px;
+    }
+  </style>
+  <p class="author-info">Author: Dustin_Chen</p>
+  <p class="author-info">Email: <a href="mailto:Dustin_Chen@compal.com">Dustin_Chen@compal.com</a></p>
+  <p class="author-info">or <a href="mailto:chuhpsdustin@gmail.com">chuhpsdustin@gmail.com</a></p>
+
+  <p><strong>Purpose:</strong> Find closest valid SSB and PointA frequencies and calculate all related parameters</p>
   </div>
 
   <div class="table-container">

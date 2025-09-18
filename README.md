@@ -1,6 +1,6 @@
 # ssb_pointA_fix
 
-Online calculator : https://dustinchen26.github.io/ssb_calculate/
+Online calculator : https://dustinchen26.github.io/ssb_pointA_fix
 
 ## Usage
 ```
@@ -14,6 +14,6 @@ absFreqPointA (kHz): 3554700 (Target Point A frequency)
 carrierBw (RB): 273 (Resource blocks for carrier bandwidth)
 
 Final Calculated Parameters:
-gscn=7890, absFreqPointA=3554700, absArfcnPointA=636980, absFreqSsb=3563040, absArfcnSsb=637536, dlEarfcn=640256, nDlCenterFreq=3603840, Kssb=4, offsetToPointA=26
+gscn=7890, absFreqPointA=3554700, absArfcnPointA=636980, absFreqSsb=3563040, absArfcnSsb=637536, dlEarfcn=640256, nDlCenterFreq=3603840, Kssb=4, offsetToPointA=26, coreset0RB=48, coreset0offset=12
 
 ```
