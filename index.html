@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Enhanced SSB Calculator</title>
+  <style>
+    p {
+      margin-top: 0.1em;
+      margin-bottom: 0.1em;
+    }
+
+    table {
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid black;
+      padding: 8px;
+      text-align: center;
+      line-height: 0.1;
+    }
+
+    table {
+      table-layout: fixed;
+    }
+
+    td,
+    th {
+      height: 1px;
+      white-space: nowrap;
+    }
+
+    body {
+      font-family: Roboto, sans-serif;
+      font-size: 14px;
+    }
+
+    h1,
+    h4,
+    label,
+    input,
+    button,
+    p {
+      margin: 0;
+      padding: 0;
+    }
+
+    button {
+      display: inline-block;
+      margin-top: 5px;
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    input {
+      width: 120px;
+      padding: 4px;
+      margin: 2px 0;
+    }
+
+    .input-group {
+      margin: 10px 0;
+    }
+
+    .result-section {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+    }
+
+    .closest-values {
+      background-color: #e8f4fd;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      border-left: 4px solid #2196F3;
+    }
+
+    .final-result {
+      background-color: #e8f5e8;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      border-left: 4px solid #4CAF50;
+      font-weight: bold;
+    }
+
+    .inline-table {
+      font-size: 12px;
+      display: inline-block;
+      margin-right: 10px;
+    }
+
+    .table-container {
+      margin-left: 50px;
+      font-size: 12px;
+      display: inline-block;
+      margin-right: 12px;
+    }
+
+    ul {
+      margin-top: 0;
+    }
+
+    .blue-link {
+      color: blue;
+    }
+
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    function findClosestValues() {
+      // Get user inputs
+      var inputAbsFreqSsb = parseFloat(document.getElementById("absFreqSsb").value);
+      var inputAbsFreqPointA = parseFloat(document.getElementById("absFreqPointA").value);
+      var carrierBw = parseInt(document.getElementById("carrierBw").value);
+
+      var subCarrierSpacing = 30;
+      var offsetToCarrier = 0;
+
+      // NR Band definitions
+      var nrBand = [
+        {'band': 41, 'lowest_freq': 2496000, 'highest_freq': 2690000, 'lowest_n_ref': 499200, 'highest_n_ref': 537996, 'n_ref_step': 6, 'lowest_gscn': 6252, 'highest_gscn': 6714, 'gscn_step': 3},
+        {'band': 48, 'lowest_freq': 3550000, 'highest_freq': 3700000, 'lowest_n_ref': 636668, 'highest_n_ref': 646666, 'n_ref_step': 2, 'lowest_gscn': 7884, 'highest_gscn': 7982, 'gscn_step': 1},
+        {'band': 78, 'lowest_freq': 3300000, 'highest_freq': 3800000, 'lowest_n_ref': 620000, 'highest_n_ref': 653332, 'n_ref_step': 2, 'lowest_gscn': 7711, 'highest_gscn': 8051, 'gscn_step': 1},
+        {'band': 79, 'lowest_freq': 4400000, 'highest_freq': 5000000, 'lowest_n_ref': 693334, 'highest_n_ref': 733332, 'n_ref_step': 2, 'lowest_gscn': 8480, 'highest_gscn': 8880, 'gscn_step': 16},
+        {'band': 79, 'lowest_freq': 4400000, 'highest_freq': 5000000, 'lowest_n_ref': 693334, 'highest_n_ref': 733332, 'n_ref_step': 2, 'lowest_gscn': 8475, 'highest_gscn': 8884, 'gscn_step': 1}
+      ];
+
+      var resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "";
+
+      // Determine which band based on frequency range
+      var detectedBand = null;
+      var bandIndex = -1;
+
+      for (var i = 0; i < nrBand.length; i++) {
+        if (inputAbsFreqSsb >= nrBand[i].lowest_freq && inputAbsFreqSsb <= nrBand[i].highest_freq) {
+          detectedBand = nrBand[i].band;
+          bandIndex = i;
+          break;
+        }
+      }
+
+      if (detectedBand === null) {
+        resultDiv.innerHTML = "<div class='error'>Error: Input frequency is not within any supported band range.</div>";
+        return;
+      }
+
+      // Special handling for band 79
+      if (detectedBand === 79) {
+        if (carrierBw >= 106) {
+          bandIndex = 3; // Use the 16-step version for larger BW
+        } else {
+          bandIndex = 4; // Use the 1-step version for smaller BW
+        }
+      }
+
+      resultDiv.innerHTML += "<div class='closest-values'><strong>Detected Band:</strong> n" + detectedBand + "</div>";
+
+      // Find closest valid SSB frequency and GSCN
+      var closestSsbData = findClosestSsb(inputAbsFreqSsb, nrBand[bandIndex]);
+      var closestPointAData = findClosestPointA(inputAbsFreqPointA, nrBand[bandIndex], carrierBw, subCarrierSpacing, offsetToCarrier);
+
+      if (!closestSsbData || !closestPointAData) {
+        resultDiv.innerHTML += "<div class='error'>Error: Could not find valid closest values.</div>";
+        return;
+      }
+
+      // Display closest values found
+      resultDiv.innerHTML += "<div class='closest-values'>";
+      resultDiv.innerHTML += "<strong>Input vs Closest Valid Values:</strong><br>";
+      resultDiv.innerHTML += "Input absFreqSsb: " + inputAbsFreqSsb + " kHz → Closest: " + closestSsbData.absFreqSsb + " kHz (diff: " + Math.abs(inputAbsFreqSsb - closestSsbData.absFreqSsb) + " kHz)<br>";
+      resultDiv.innerHTML += "Input absFreqPointA: " + inputAbsFreqPointA + " kHz → Closest: " + closestPointAData.absFreqPointA + " kHz (diff: " + Math.abs(inputAbsFreqPointA - closestPointAData.absFreqPointA) + " kHz)<br>";
+      resultDiv.innerHTML += "</div>";
+
+      // Calculate all parameters using the closest values
+      calculateAllParameters(closestSsbData, closestPointAData, carrierBw, subCarrierSpacing, offsetToCarrier, nrBand[bandIndex]);
+    }
+
+    function findClosestSsb(targetFreq, bandInfo) {
+      var closestDiff = Infinity;
+      var closestData = null;
+
+      if (bandInfo.lowest_freq <= 3000000) {
+        // Low frequency calculation (FR1 low)
+        for (var N = 1; N <= 2499; N++) {
+          for (var M = 1; M <= 5; M += 2) {
+            var gscn = 3 * N + (M - 3) / 2;
+            if (gscn >= bandInfo.lowest_gscn && gscn <= bandInfo.highest_gscn) {
+              for (var n_ref = bandInfo.lowest_n_ref; n_ref <= bandInfo.highest_n_ref; n_ref += bandInfo.n_ref_step) {
+                if (5 * n_ref === N * 1200 + M * 50) {
+                  var absFreqSsb = N * 1200 + M * 50;
+                  var diff = Math.abs(absFreqSsb - targetFreq);
+                  if (diff < closestDiff) {
+                    closestDiff = diff;
+                    closestData = {
+                      gscn: gscn,
+                      absFreqSsb: absFreqSsb,
+                      absArfcnSsb: n_ref,
+                      N: N,
+                      M: M
+                    };
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Mid frequency calculation (FR1 mid)
+        for (var gscn = bandInfo.lowest_gscn; gscn <= bandInfo.highest_gscn; gscn += bandInfo.gscn_step) {
+          for (var n_ref = bandInfo.lowest_n_ref; n_ref <= bandInfo.highest_n_ref; n_ref += bandInfo.n_ref_step) {
+            if ((gscn - 7499) * 96 === (n_ref - 600000)) {
+              var absFreqSsb = 3000000 + (gscn - 7499) * 1440;
+              var diff = Math.abs(absFreqSsb - targetFreq);
+              if (diff < closestDiff) {
+                closestDiff = diff;
+                closestData = {
+                  gscn: gscn,
+                  absFreqSsb: absFreqSsb,
+                  absArfcnSsb: n_ref
+                };
+              }
+            }
+          }
+        }
+      }
+
+      return closestData;
+    }
+
+    function findClosestPointA(targetFreq, bandInfo, carrierBw, subCarrierSpacing, offsetToCarrier) {
+      var closestDiff = Infinity;
+      var closestData = null;
+
+      if (bandInfo.lowest_freq <= 3000000) {
+        // Low frequency range
+        for (var freq = bandInfo.lowest_n_ref * 5; freq <= bandInfo.highest_n_ref * 5; freq += bandInfo.n_ref_step * 15) {
+          var nDlCenterFreq = freq;
+          var absFreqPointA = nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 - offsetToCarrier * 12 * subCarrierSpacing;
+          var diff = Math.abs(absFreqPointA - targetFreq);
+          if (diff < closestDiff) {
+            closestDiff = diff;
+            var dlEarfcn = nDlCenterFreq / 5;
+            var absArfcnPointA = absFreqPointA / 5;
+            closestData = {
+              absFreqPointA: absFreqPointA,
+              absArfcnPointA: absArfcnPointA,
+              nDlCenterFreq: nDlCenterFreq,
+              dlEarfcn: dlEarfcn
+            };
+          }
+        }
+      } else {
+        // Mid frequency range
+        for (var freq = (bandInfo.lowest_n_ref - 600000) * 15 + 3000000; freq <= (bandInfo.highest_n_ref - 600000) * 15 + 3000000; freq += bandInfo.n_ref_step * 15) {
+          var nDlCenterFreq = freq;
+          var absFreqPointA = nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 - offsetToCarrier * 12 * subCarrierSpacing;
+          var diff = Math.abs(absFreqPointA - targetFreq);
+          if (diff < closestDiff) {
+            closestDiff = diff;
+            var dlEarfcn = (nDlCenterFreq - 3000000) / 15 + 600000;
+            var absArfcnPointA = (absFreqPointA - 3000000) / 15 + 600000;
+            closestData = {
+              absFreqPointA: absFreqPointA,
+              absArfcnPointA: absArfcnPointA,
+              nDlCenterFreq: nDlCenterFreq,
+              dlEarfcn: dlEarfcn
+            };
+          }
+        }
+      }
+
+      return closestData;
+    }
+
+    function calculateAllParameters(ssbData, pointAData, carrierBw, subCarrierSpacing, offsetToCarrier, bandInfo) {
+      // Calculate Kssb and offsetToPointA
+      var Kssb = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / 15;
+      var offsetToPointA = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - pointAData.absFreqPointA) / (15 * 12);
+
+      // Determine CORESET0 parameters
+      var coreset0RB, coreset0offset;
+      if (bandInfo.band === 79) {
+        coreset0RB = 48;
+        coreset0offset = 0;
+      } else {
+        if (carrierBw >= 48) {
+          coreset0RB = 48;
+          coreset0offset = 12;
+        } else if (carrierBw < 48 && carrierBw >= 24) {
+          coreset0RB = 24;
+          coreset0offset = 0;
+        }
+      }
+
+      // Validate the configuration
+      var isValid = (pointAData.nDlCenterFreq + carrierBw * 12 * subCarrierSpacing / 2 >= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0offset * 12 * subCarrierSpacing + coreset0RB * 12 * subCarrierSpacing) &&
+                   (pointAData.nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 <= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0offset * 12 * subCarrierSpacing);
+
+      var resultDiv = document.getElementById("result");
+      
+      if (Kssb < 0 || !isValid) {
+        resultDiv.innerHTML += "<div class='error'>Warning: Configuration may not be valid (Kssb=" + Kssb + ", Valid=" + isValid + ")</div>";
+      }
+
+      // Display final results
+      resultDiv.innerHTML += "<div class='final-result'>";
+      resultDiv.innerHTML += "<strong>Final Calculated Parameters:</strong><br>";
+      resultDiv.innerHTML += "gscn=" + ssbData.gscn + ", ";
+      resultDiv.innerHTML += "absFreqPointA=" + pointAData.absFreqPointA + ", ";
+      resultDiv.innerHTML += "absArfcnPointA=" + pointAData.absArfcnPointA + ", ";
+      resultDiv.innerHTML += "absFreqSsb=" + ssbData.absFreqSsb + ", ";
+      resultDiv.innerHTML += "absArfcnSsb=" + ssbData.absArfcnSsb + ", ";
+      resultDiv.innerHTML += "dlEarfcn=" + pointAData.dlEarfcn + ", ";
+      resultDiv.innerHTML += "nDlCenterFreq=" + pointAData.nDlCenterFreq + ", ";
+      resultDiv.innerHTML += "Kssb=" + Kssb + ", ";
+      resultDiv.innerHTML += "offsetToPointA=" + offsetToPointA;
+      resultDiv.innerHTML += "</div>";
+
+      // Additional details
+      resultDiv.innerHTML += "<div class='closest-values'>";
+      resultDiv.innerHTML += "<strong>Additional Information:</strong><br>";
+      resultDiv.innerHTML += "Band: n" + bandInfo.band + "<br>";
+      resultDiv.innerHTML += "Carrier Bandwidth: " + carrierBw + " RB<br>";
+      resultDiv.innerHTML += "Subcarrier Spacing: " + subCarrierSpacing + " kHz<br>";
+      resultDiv.innerHTML += "CORESET0 RBs: " + coreset0RB + ", Offset: " + coreset0offset + "<br>";
+      resultDiv.innerHTML += "Configuration Valid: " + (isValid && Kssb >= 0 ? "Yes" : "No");
+      resultDiv.innerHTML += "</div>";
+    }
+  </script>
+
+  <h2>Enhanced SSB Calculator with Closest Value Finding</h2>
+  <div style="margin-bottom: 20px;">
+    <p><strong>Author:</strong> Enhanced by Claude based on Dustin_Chen's original work</p>
+    <p><strong>Purpose:</strong> Find closest valid SSB and PointA frequencies and calculate all related parameters</p>
+  </div>
+
+  <div class="table-container">
+    <div class="inline-table">
+      <p><b>38.101-1 Table 5.3.2-1 SCS=30</b></p>
+      <table>
+        <tr><th>BW(MHz)</th><th>carrierBw(RB)</th></tr>
+        <tr><td style="color: blue;">100</td><td style="color: blue;">273</td></tr>
+        <tr><td>90</td><td>245</td></tr>
+        <tr><td>80</td><td>217</td></tr>
+        <tr><td>60</td><td>162</td></tr>
+        <tr><td>50</td><td>133</td></tr>
+        <tr><td>40</td><td>106</td></tr>
+        <tr><td>30</td><td>78</td></tr>
+        <tr><td>25</td><td>65</td></tr>
+        <tr><td>20</td><td>51</td></tr>
+        <tr><td>15</td><td>38</td></tr>
+        <tr><td>10</td><td>24</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div style="clear: both; margin-top: 20px;">
+    <h3>Input Parameters</h3>
+    <p><strong>Instructions:</strong> Enter your desired frequencies (even if approximate) and carrier bandwidth. The algorithm will find the closest valid values according to 5G NR specifications.</p>
+    
+    <div class="input-group">
+      <label for="absFreqSsb">absFreqSsb (kHz):</label>
+      <input type="number" value="3563040" id="absFreqSsb" name="absFreqSsb" min="0">
+      <span style="font-size: 12px; color: #666;">(Target SSB frequency)</span>
+    </div>
+
+    <div class="input-group">
+      <label for="absFreqPointA">absFreqPointA (kHz):</label>
+      <input type="number" value="3554700" id="absFreqPointA" name="absFreqPointA" min="0">
+      <span style="font-size: 12px; color: #666;">(Target Point A frequency)</span>
+    </div>
+
+    <div class="input-group">
+      <label for="carrierBw">carrierBw (RB):</label>
+      <input type="number" value="273" id="carrierBw" name="carrierBw" min="1" max="1000">
+      <span style="font-size: 12px; color: #666;">(Resource blocks for carrier bandwidth)</span>
+    </div>
+
+    <button onclick="findClosestValues()">Find Closest Values & Calculate</button>
+  </div>
+
+  <div id="result" class="result-section"></div>
+
+  <div style="margin-top: 30px; font-size: 12px; color: #666;">
+    <p><strong>Supported Bands:</strong></p>
+    <ul>
+      <li>n41: 2496-2690 MHz</li>
+      <li>n48: 3550-3700 MHz</li>
+      <li>n78: 3300-3800 MHz</li>
+      <li>n79: 4400-5000 MHz</li>
+    </ul>
+  </div>
+
+</body>
+</html>
