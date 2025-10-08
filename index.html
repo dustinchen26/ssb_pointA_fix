@@ -4,7 +4,6 @@
 <head>
   <title>ssb_pointA_fix</title>
   <style>
-    /* 保持原有的CSS樣式不變 */
     p {
       margin-top: 0.1em;
       margin-bottom: 0.1em;
@@ -131,38 +130,6 @@
 
 <body>
   <script>
-    // 添加CORESET配置表
-    const CORESET_CONFIG_FR1 = [
-      {index: 0, pattern: 1, rbs: 24, symbols: 2, offset: 0},
-      {index: 1, pattern: 1, rbs: 24, symbols: 2, offset: 1},
-      {index: 2, pattern: 1, rbs: 24, symbols: 2, offset: 2},
-      {index: 3, pattern: 1, rbs: 24, symbols: 2, offset: 3},
-      {index: 4, pattern: 1, rbs: 24, symbols: 2, offset: 4},
-      {index: 5, pattern: 1, rbs: 24, symbols: 3, offset: 0},
-      {index: 6, pattern: 1, rbs: 24, symbols: 3, offset: 1},
-      {index: 7, pattern: 1, rbs: 24, symbols: 3, offset: 2},
-      {index: 8, pattern: 1, rbs: 24, symbols: 3, offset: 3},
-      {index: 9, pattern: 1, rbs: 24, symbols: 3, offset: 4},
-      {index: 10, pattern: 1, rbs: 48, symbols: 1, offset: 12},
-      {index: 11, pattern: 1, rbs: 48, symbols: 1, offset: 14},
-      {index: 12, pattern: 1, rbs: 48, symbols: 1, offset: 16},
-      {index: 13, pattern: 1, rbs: 48, symbols: 2, offset: 12},
-      {index: 14, pattern: 1, rbs: 48, symbols: 2, offset: 14},
-      {index: 15, pattern: 1, rbs: 48, symbols: 2, offset: 16}
-    ];
-
-    const CORESET_CONFIG_FR2 = [
-      {index: 0, pattern: 1, rbs: 24, symbols: 2, offset: 0},
-      {index: 1, pattern: 1, rbs: 24, symbols: 2, offset: 4},
-      {index: 2, pattern: 1, rbs: 48, symbols: 1, offset: 14},
-      {index: 3, pattern: 1, rbs: 48, symbols: 2, offset: 14},
-      {index: 4, pattern: 3, rbs: 24, symbols: 2, offset: -20}, // 根据SSB index条件
-      {index: 5, pattern: 3, rbs: 24, symbols: 2, offset: 24},
-      {index: 6, pattern: 3, rbs: 48, symbols: 2, offset: -20}, // 根据SSB index条件
-      {index: 7, pattern: 3, rbs: 48, symbols: 2, offset: 48}
-      // 索引8-15为保留
-    ];
-
     function findClosestValues() {
       // Get user inputs
       var inputAbsFreqSsb = parseFloat(document.getElementById("absFreqSsb").value);
@@ -239,15 +206,6 @@
       resultDiv.innerHTML += "<strong>Input vs Closest Valid Values:</strong><br>";
       resultDiv.innerHTML += "Input absFreqSsb: " + inputAbsFreqSsb + " kHz → Closest: " + closestSsbData.absFreqSsb + " kHz (diff: " + Math.abs(inputAbsFreqSsb - closestSsbData.absFreqSsb) + " kHz)<br>";
       resultDiv.innerHTML += "Input absFreqPointA: " + inputAbsFreqPointA + " kHz → Closest: " + closestPointAData.absFreqPointA + " kHz (diff: " + Math.abs(inputAbsFreqPointA - closestPointAData.absFreqPointA) + " kHz)<br>";
-
-      // 在显示结果部分添加CORESET配置信息
-      resultDiv.innerHTML += "<div class='closest-values'>";
-      resultDiv.innerHTML += "<strong>CORESET Configuration:</strong><br>";
-      if (detectedBand === 257) {
-        resultDiv.innerHTML += "Using FR2 CORESET configuration (Table 13-8)<br>";
-      } else {
-        resultDiv.innerHTML += "Using FR1 CORESET configuration (Table 13-4)<br>";
-      }
       resultDiv.innerHTML += "</div>";
 
       // Calculate all parameters using the closest values
@@ -390,70 +348,70 @@
     }
 
     function calculateAllParameters(ssbData, pointAData, carrierBw, subCarrierSpacing, offsetToCarrier, bandInfo) {
-  // 恢復原始的Kssb和offsetToPointA計算公式
+      // Calculate Kssb and offsetToPointA
       var Kssb, offsetToPointA;
       
       if (bandInfo.band === 257) {
-    // FR2的計算方式 - 使用原始的計算公式但調整符號數
-    Kssb = (ssbData.absFreqSsb - 20 * 12 * subCarrierSpacing - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / 15;
-    offsetToPointA = (ssbData.absFreqSsb - 20 * 12 * subCarrierSpacing - Kssb * 15 - pointAData.absFreqPointA) / (15 * 12);
+        // FR2的計算方式 - 修正後的公式
+        var ssbStartFreq = ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing;
+        Kssb = (ssbStartFreq - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / subCarrierSpacing;
+        offsetToPointA = Math.floor((ssbStartFreq - pointAData.absFreqPointA - Kssb * subCarrierSpacing) / (subCarrierSpacing * 12));
+        
+        // 確保Kssb和offsetToPointA為非負整數
+        Kssb = Math.max(0, Math.round(Kssb));
+        offsetToPointA = Math.max(0, Math.round(offsetToPointA));
       } else {
-    // FR1的計算方式 - 保持原始公式不變
-    Kssb = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / 15;
-    offsetToPointA = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - pointAData.absFreqPointA) / (15 * 12);
+        // FR1的計算方式 - 保持原始公式不變
+        Kssb = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / 15;
+        offsetToPointA = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - pointAData.absFreqPointA) / (15 * 12);
       }
 
-      // 修改CORESET0參數選擇邏輯
-      var coreset0RB, coreset0Symbols, coreset0Offset;
-      
-      if (bandInfo.band === 257) {
+      // Determine CORESET0 parameters
+      var coreset0RB, coreset0offset;
+      if (bandInfo.band === 79) {
+        coreset0RB = 48;
+        coreset0offset = 0;
+      } else if (bandInfo.band === 257) {
         // FR2的CORESET0配置 - 根據表格13-8
         if (carrierBw >= 48) {
           coreset0RB = 48;
-      coreset0Symbols = 2;
-      coreset0Offset = 14;
+          coreset0offset = 14;
         } else {
           coreset0RB = 24;
-      coreset0Symbols = 2;
-      coreset0Offset = 0;
+          coreset0offset = 0;
         }
-      } else if (bandInfo.band === 79) {
-        // Band 79的特殊配置
-        coreset0RB = 48;
-        coreset0Symbols = 2;
-        coreset0Offset = 0;
       } else {
-        // 其他FR1頻段的配置 - 根據表格13-4
         if (carrierBw >= 48) {
           coreset0RB = 48;
-      coreset0Symbols = 1;
-      coreset0Offset = 12;
-        } else {
+          coreset0offset = 12;
+        } else if (carrierBw < 48 && carrierBw >= 24) {
           coreset0RB = 24;
-          coreset0Symbols = 2;
-      coreset0Offset = 0;
+          coreset0offset = 0;
         }
       }
 
-  // 恢復原始的驗證條件
+      // Validate the configuration
       var isValid;
       if (bandInfo.band === 257) {
-    // FR2的驗證條件
-    isValid = (pointAData.nDlCenterFreq + carrierBw * 12 * subCarrierSpacing / 2 >= ssbData.absFreqSsb - 20 * 12 * subCarrierSpacing - Kssb * 15 - coreset0Offset * 12 * subCarrierSpacing + coreset0RB * 12 * subCarrierSpacing) &&
-             (pointAData.nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 <= ssbData.absFreqSsb - 20 * 12 * subCarrierSpacing - Kssb * 15 - coreset0Offset * 12 * subCarrierSpacing);
+        // FR2的驗證條件
+        var ssbStartFreq = ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing;
+        var coresetStartFreq = ssbStartFreq - coreset0offset * 12 * subCarrierSpacing;
+        
+        isValid = (pointAData.nDlCenterFreq + carrierBw * 12 * subCarrierSpacing / 2 >= coresetStartFreq + coreset0RB * 12 * subCarrierSpacing) &&
+                 (pointAData.nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 <= coresetStartFreq);
       } else {
-    // FR1的驗證條件
-    isValid = (pointAData.nDlCenterFreq + carrierBw * 12 * subCarrierSpacing / 2 >= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0Offset * 12 * subCarrierSpacing + coreset0RB * 12 * subCarrierSpacing) &&
-             (pointAData.nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 <= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0Offset * 12 * subCarrierSpacing);
+        // FR1的驗證條件 - 保持原始公式
+        isValid = (pointAData.nDlCenterFreq + carrierBw * 12 * subCarrierSpacing / 2 >= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0offset * 12 * subCarrierSpacing + coreset0RB * 12 * subCarrierSpacing) &&
+                 (pointAData.nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 <= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0offset * 12 * subCarrierSpacing);
       }
 
       var resultDiv = document.getElementById("result");
       
       if (Kssb < 0 || !isValid) {
-    resultDiv.innerHTML += "<div class='error'>Warning: Configuration may not be valid (Kssb=" + Kssb + ", Valid=" + isValid + ")</div>";
+        resultDiv.innerHTML += "<div class='error'>Warning: Configuration may not be valid (Kssb=" + Kssb + ", Valid=" + isValid + ")</div>";
       }
 
-  // 顯示最終結果 - 保持與原始相同的格式
+      // Display final results
       resultDiv.innerHTML += "<div class='final-result'>";
       resultDiv.innerHTML += "<strong>Final Calculated Parameters:</strong><br>";
       resultDiv.innerHTML += "gscn=" + ssbData.gscn + ", ";
@@ -463,34 +421,13 @@
       resultDiv.innerHTML += "absArfcnSsb=" + ssbData.absArfcnSsb + ", ";
       resultDiv.innerHTML += "dlEarfcn=" + pointAData.dlEarfcn + ", ";
       resultDiv.innerHTML += "nDlCenterFreq=" + pointAData.nDlCenterFreq + ", ";
-  resultDiv.innerHTML += "Kssb=" + Kssb + ", ";
-  resultDiv.innerHTML += "offsetToPointA=" + offsetToPointA + ", ";
+      resultDiv.innerHTML += "Kssb=" + Kssb + ", ";
+      resultDiv.innerHTML += "offsetToPointA=" + offsetToPointA + ", ";
       resultDiv.innerHTML += "coreset0RB=" + coreset0RB + ", ";
-      resultDiv.innerHTML += "coreset0Symbols=" + coreset0Symbols + ", ";
-      resultDiv.innerHTML += "coreset0Offset=" + coreset0Offset;
+      resultDiv.innerHTML += "coreset0offset=" + coreset0offset;
       resultDiv.innerHTML += "</div>";
 
-  // 添加詳細的頻率計算信息用於調試
-  resultDiv.innerHTML += "<div class='closest-values'>";
-  resultDiv.innerHTML += "<strong>Frequency Analysis (for debugging):</strong><br>";
-  
-  if (bandInfo.band === 257) {
-    var ssbStartFreq = ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing;
-    var coresetStartFreq = ssbStartFreq - coreset0Offset * 12 * subCarrierSpacing;
-    var carrierStartFreq = pointAData.absFreqPointA;
-    var carrierEndFreq = carrierStartFreq + carrierBw * 12 * subCarrierSpacing;
-    
-    resultDiv.innerHTML += "SSB Start Freq: " + ssbStartFreq + " kHz<br>";
-    resultDiv.innerHTML += "CORESET Start Freq: " + coresetStartFreq + " kHz<br>";
-    resultDiv.innerHTML += "Carrier Start Freq: " + carrierStartFreq + " kHz<br>";
-    resultDiv.innerHTML += "Carrier End Freq: " + carrierEndFreq + " kHz<br>";
-    resultDiv.innerHTML += "CORESET within Carrier: " + 
-      (coresetStartFreq >= carrierStartFreq && 
-       (coresetStartFreq + coreset0RB * 12 * subCarrierSpacing) <= carrierEndFreq);
-  }
-  resultDiv.innerHTML += "</div>";
-
-  // Additional details
+      // Additional details
       resultDiv.innerHTML += "<div class='closest-values'>";
       resultDiv.innerHTML += "<strong>Configuration Details:</strong><br>";
       if (bandInfo.band === 79) {
@@ -501,22 +438,20 @@
         }
       } else if (bandInfo.band === 257) {
         resultDiv.innerHTML += "Band n257 (FR2) → Using FR2 configuration with SCS=120kHz<br>";
-        resultDiv.innerHTML += "FR2 uses different SSB pattern (20 symbols instead of 10)<br>";
         resultDiv.innerHTML += "Using CORESET configuration from Table 13-8<br>";
       } else {
         if (carrierBw >= 48) {
-          resultDiv.innerHTML += "BW≥48 RB → Using 38.213 Table 13-4 Index 10-15 (48 RB CORESET0)<br>";
+          resultDiv.innerHTML += "BW≥48 RB → Using 38.213 Table 13-4 Index 10 (Try to have 48 RB for CORESET0)<br>";
         } else if (carrierBw >= 24) {
-          resultDiv.innerHTML += "24≤BW<48 RB → Using 38.213 Table 13-4 Index 0-9 (24 RB CORESET0)<br>";
+          resultDiv.innerHTML += "24≤BW<48 RB → Using 38.213 Table 13-4 Index 0 (Best fit CORESET0)<br>";
         } else {
-          resultDiv.innerHTML += "BW<24 RB → Using 38.213 Table 13-4 Index 0-9<br>";
+          resultDiv.innerHTML += "BW<24 RB → Using 38.213 Table 13-4 Index 0<br>";
         }
       }
       resultDiv.innerHTML += "<strong>Additional Information:</strong><br>";
       resultDiv.innerHTML += "Band: n" + bandInfo.band + "<br>";
       resultDiv.innerHTML += "Carrier Bandwidth: " + carrierBw + " RB<br>";
       resultDiv.innerHTML += "Subcarrier Spacing: " + subCarrierSpacing + " kHz<br>";
-      resultDiv.innerHTML += "SS/PBCH and PDCCH SCS: {" + subCarrierSpacing + ", " + subCarrierSpacing + "} kHz<br>";
       resultDiv.innerHTML += "Configuration Valid: " + (isValid && Kssb >= 0 ? "Yes" : "No");
       resultDiv.innerHTML += "</div>";
     }
