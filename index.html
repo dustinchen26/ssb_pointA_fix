@@ -4,6 +4,7 @@
 <head>
   <title>ssb_pointA_fix</title>
   <style>
+    /* 保持原有的CSS樣式不變 */
     p {
       margin-top: 0.1em;
       margin-bottom: 0.1em;
@@ -121,27 +122,65 @@
       color: red;
       font-weight: bold;
     }
+    .author-info {
+      display: inline;
+      margin-right: 10px;
+    }
   </style>
 </head>
 
 <body>
   <script>
+    // 添加CORESET配置表
+    const CORESET_CONFIG_FR1 = [
+      {index: 0, pattern: 1, rbs: 24, symbols: 2, offset: 0},
+      {index: 1, pattern: 1, rbs: 24, symbols: 2, offset: 1},
+      {index: 2, pattern: 1, rbs: 24, symbols: 2, offset: 2},
+      {index: 3, pattern: 1, rbs: 24, symbols: 2, offset: 3},
+      {index: 4, pattern: 1, rbs: 24, symbols: 2, offset: 4},
+      {index: 5, pattern: 1, rbs: 24, symbols: 3, offset: 0},
+      {index: 6, pattern: 1, rbs: 24, symbols: 3, offset: 1},
+      {index: 7, pattern: 1, rbs: 24, symbols: 3, offset: 2},
+      {index: 8, pattern: 1, rbs: 24, symbols: 3, offset: 3},
+      {index: 9, pattern: 1, rbs: 24, symbols: 3, offset: 4},
+      {index: 10, pattern: 1, rbs: 48, symbols: 1, offset: 12},
+      {index: 11, pattern: 1, rbs: 48, symbols: 1, offset: 14},
+      {index: 12, pattern: 1, rbs: 48, symbols: 1, offset: 16},
+      {index: 13, pattern: 1, rbs: 48, symbols: 2, offset: 12},
+      {index: 14, pattern: 1, rbs: 48, symbols: 2, offset: 14},
+      {index: 15, pattern: 1, rbs: 48, symbols: 2, offset: 16}
+    ];
+
+    const CORESET_CONFIG_FR2 = [
+      {index: 0, pattern: 1, rbs: 24, symbols: 2, offset: 0},
+      {index: 1, pattern: 1, rbs: 24, symbols: 2, offset: 4},
+      {index: 2, pattern: 1, rbs: 48, symbols: 1, offset: 14},
+      {index: 3, pattern: 1, rbs: 48, symbols: 2, offset: 14},
+      {index: 4, pattern: 3, rbs: 24, symbols: 2, offset: -20}, // 根据SSB index条件
+      {index: 5, pattern: 3, rbs: 24, symbols: 2, offset: 24},
+      {index: 6, pattern: 3, rbs: 48, symbols: 2, offset: -20}, // 根据SSB index条件
+      {index: 7, pattern: 3, rbs: 48, symbols: 2, offset: 48}
+      // 索引8-15为保留
+    ];
+
     function findClosestValues() {
       // Get user inputs
       var inputAbsFreqSsb = parseFloat(document.getElementById("absFreqSsb").value);
       var inputAbsFreqPointA = parseFloat(document.getElementById("absFreqPointA").value);
       var carrierBw = parseInt(document.getElementById("carrierBw").value);
 
-      var subCarrierSpacing = 30;
       var offsetToCarrier = 0;
 
-      // NR Band definitions
+      // NR Band definitions - 包含n257
       var nrBand = [
         {'band': 41, 'lowest_freq': 2496000, 'highest_freq': 2690000, 'lowest_n_ref': 499200, 'highest_n_ref': 537996, 'n_ref_step': 6, 'lowest_gscn': 6252, 'highest_gscn': 6714, 'gscn_step': 3},
         {'band': 48, 'lowest_freq': 3550000, 'highest_freq': 3700000, 'lowest_n_ref': 636668, 'highest_n_ref': 646666, 'n_ref_step': 2, 'lowest_gscn': 7884, 'highest_gscn': 7982, 'gscn_step': 1},
         {'band': 78, 'lowest_freq': 3300000, 'highest_freq': 3800000, 'lowest_n_ref': 620000, 'highest_n_ref': 653332, 'n_ref_step': 2, 'lowest_gscn': 7711, 'highest_gscn': 8051, 'gscn_step': 1},
         {'band': 79, 'lowest_freq': 4400000, 'highest_freq': 5000000, 'lowest_n_ref': 693334, 'highest_n_ref': 733332, 'n_ref_step': 2, 'lowest_gscn': 8480, 'highest_gscn': 8880, 'gscn_step': 16},
-        {'band': 79, 'lowest_freq': 4400000, 'highest_freq': 5000000, 'lowest_n_ref': 693334, 'highest_n_ref': 733332, 'n_ref_step': 2, 'lowest_gscn': 8475, 'highest_gscn': 8884, 'gscn_step': 1}
+        {'band': 79, 'lowest_freq': 4400000, 'highest_freq': 5000000, 'lowest_n_ref': 693334, 'highest_n_ref': 733332, 'n_ref_step': 2, 'lowest_gscn': 8475, 'highest_gscn': 8884, 'gscn_step': 1},
+        // 新增n257頻段定義
+        {'band': 257, 'lowest_freq': 26500000, 'highest_freq': 29500000, 'lowest_n_ref': 2054166, 'highest_n_ref': 2104165, 'n_ref_step': 1, 'lowest_gscn': 22388, 'highest_gscn': 22558, 'gscn_step': 1},
+        {'band': 257, 'lowest_freq': 26500000, 'highest_freq': 29500000, 'lowest_n_ref': 2054167, 'highest_n_ref': 2104165, 'n_ref_step': 2, 'lowest_gscn': 22390, 'highest_gscn': 22556, 'gscn_step': 2}
       ];
 
       var resultDiv = document.getElementById("result");
@@ -164,19 +203,30 @@
         return;
       }
 
-      // Special handling for band 79
+      // Special handling for band 79 and 257
       if (detectedBand === 79) {
         if (carrierBw >= 106) {
           bandIndex = 3; // Use the 16-step version for larger BW
         } else {
           bandIndex = 4; // Use the 1-step version for smaller BW
         }
+      } else if (detectedBand === 257) {
+        // 對於n257，根據需要選擇合適的n_ref_step
+        bandIndex = 5; // 預設使用n_ref_step=1的版本
       }
 
-      resultDiv.innerHTML += "<div class='closest-values'><strong>Detected Band:</strong> n" + detectedBand + "</div>";
+      // 根據頻段自動選擇子載波間隔
+      var subCarrierSpacing;
+      if (detectedBand === 257) {
+        subCarrierSpacing = 120; // FR2使用120 kHz
+      } else {
+        subCarrierSpacing = 30; // FR1使用30 kHz
+      }
+
+      resultDiv.innerHTML += "<div class='closest-values'><strong>Detected Band:</strong> n" + detectedBand + " (SCS: " + subCarrierSpacing + " kHz)</div>";
 
       // Find closest valid SSB frequency and GSCN
-      var closestSsbData = findClosestSsb(inputAbsFreqSsb, nrBand[bandIndex]);
+      var closestSsbData = findClosestSsb(inputAbsFreqSsb, nrBand[bandIndex], subCarrierSpacing);
       var closestPointAData = findClosestPointA(inputAbsFreqPointA, nrBand[bandIndex], carrierBw, subCarrierSpacing, offsetToCarrier);
 
       if (!closestSsbData || !closestPointAData) {
@@ -189,16 +239,26 @@
       resultDiv.innerHTML += "<strong>Input vs Closest Valid Values:</strong><br>";
       resultDiv.innerHTML += "Input absFreqSsb: " + inputAbsFreqSsb + " kHz → Closest: " + closestSsbData.absFreqSsb + " kHz (diff: " + Math.abs(inputAbsFreqSsb - closestSsbData.absFreqSsb) + " kHz)<br>";
       resultDiv.innerHTML += "Input absFreqPointA: " + inputAbsFreqPointA + " kHz → Closest: " + closestPointAData.absFreqPointA + " kHz (diff: " + Math.abs(inputAbsFreqPointA - closestPointAData.absFreqPointA) + " kHz)<br>";
+
+      // 在显示结果部分添加CORESET配置信息
+      resultDiv.innerHTML += "<div class='closest-values'>";
+      resultDiv.innerHTML += "<strong>CORESET Configuration:</strong><br>";
+      if (detectedBand === 257) {
+        resultDiv.innerHTML += "Using FR2 CORESET configuration (Table 13-8)<br>";
+      } else {
+        resultDiv.innerHTML += "Using FR1 CORESET configuration (Table 13-4)<br>";
+      }
       resultDiv.innerHTML += "</div>";
 
       // Calculate all parameters using the closest values
       calculateAllParameters(closestSsbData, closestPointAData, carrierBw, subCarrierSpacing, offsetToCarrier, nrBand[bandIndex]);
     }
 
-    function findClosestSsb(targetFreq, bandInfo) {
+    function findClosestSsb(targetFreq, bandInfo, subCarrierSpacing) {
       var closestDiff = Infinity;
       var closestData = null;
 
+      // 根據頻率範圍選擇不同的計算方法
       if (bandInfo.lowest_freq <= 3000000) {
         // Low frequency calculation (FR1 low)
         for (var N = 1; N <= 2499; N++) {
@@ -224,7 +284,7 @@
             }
           }
         }
-      } else {
+      } else if (bandInfo.lowest_freq <= 24250000) {
         // Mid frequency calculation (FR1 mid)
         for (var gscn = bandInfo.lowest_gscn; gscn <= bandInfo.highest_gscn; gscn += bandInfo.gscn_step) {
           for (var n_ref = bandInfo.lowest_n_ref; n_ref <= bandInfo.highest_n_ref; n_ref += bandInfo.n_ref_step) {
@@ -242,6 +302,24 @@
             }
           }
         }
+      } else {
+        // High frequency calculation (FR2 - n257)
+        // 使用FR2的轉換公式，考慮SCS=120kHz
+        for (var gscn = bandInfo.lowest_gscn; gscn <= bandInfo.highest_gscn; gscn += bandInfo.gscn_step) {
+          for (var n_ref = bandInfo.lowest_n_ref; n_ref <= bandInfo.highest_n_ref; n_ref += bandInfo.n_ref_step) {
+            // FR2的SSB頻率計算公式
+            var absFreqSsb = 24250080 + (gscn - 22256) * 17280;
+            var diff = Math.abs(absFreqSsb - targetFreq);
+            if (diff < closestDiff) {
+              closestDiff = diff;
+              closestData = {
+                gscn: gscn,
+                absFreqSsb: absFreqSsb,
+                absArfcnSsb: n_ref
+              };
+            }
+          }
+        }
       }
 
       return closestData;
@@ -251,8 +329,9 @@
       var closestDiff = Infinity;
       var closestData = null;
 
+      // 根據頻率範圍選擇不同的計算方法
       if (bandInfo.lowest_freq <= 3000000) {
-        // Low frequency range
+        // Low frequency range (FR1 low)
         for (var freq = bandInfo.lowest_n_ref * 5; freq <= bandInfo.highest_n_ref * 5; freq += bandInfo.n_ref_step * 15) {
           var nDlCenterFreq = freq;
           var absFreqPointA = nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 - offsetToCarrier * 12 * subCarrierSpacing;
@@ -269,8 +348,8 @@
             };
           }
         }
-      } else {
-        // Mid frequency range
+      } else if (bandInfo.lowest_freq <= 24250000) {
+        // Mid frequency range (FR1 mid)
         for (var freq = (bandInfo.lowest_n_ref - 600000) * 15 + 3000000; freq <= (bandInfo.highest_n_ref - 600000) * 15 + 3000000; freq += bandInfo.n_ref_step * 15) {
           var nDlCenterFreq = freq;
           var absFreqPointA = nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 - offsetToCarrier * 12 * subCarrierSpacing;
@@ -287,42 +366,94 @@
             };
           }
         }
+      } else {
+        // High frequency range (FR2 - n257)
+        for (var n_ref = bandInfo.lowest_n_ref; n_ref <= bandInfo.highest_n_ref; n_ref += bandInfo.n_ref_step) {
+          // 使用FR2的轉換公式
+          var nDlCenterFreq = 24250080 + (n_ref - 2016667) * 60;
+          var absFreqPointA = nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 - offsetToCarrier * 12 * subCarrierSpacing;
+          var diff = Math.abs(absFreqPointA - targetFreq);
+          if (diff < closestDiff) {
+            closestDiff = diff;
+            var absArfcnPointA = n_ref;
+            closestData = {
+              absFreqPointA: absFreqPointA,
+              absArfcnPointA: absArfcnPointA,
+              nDlCenterFreq: nDlCenterFreq,
+              dlEarfcn: n_ref  // 在FR2中，dlEarfcn就是n_ref
+            };
+          }
+        }
       }
 
       return closestData;
     }
 
     function calculateAllParameters(ssbData, pointAData, carrierBw, subCarrierSpacing, offsetToCarrier, bandInfo) {
-      // Calculate Kssb and offsetToPointA
-      var Kssb = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / 15;
-      var offsetToPointA = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - pointAData.absFreqPointA) / (15 * 12);
-
-      // Determine CORESET0 parameters
-      var coreset0RB, coreset0offset;
-      if (bandInfo.band === 79) {
-        coreset0RB = 48;
-        coreset0offset = 0;
+  // 恢復原始的Kssb和offsetToPointA計算公式
+      var Kssb, offsetToPointA;
+      
+      if (bandInfo.band === 257) {
+    // FR2的計算方式 - 使用原始的計算公式但調整符號數
+    Kssb = (ssbData.absFreqSsb - 20 * 12 * subCarrierSpacing - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / 15;
+    offsetToPointA = (ssbData.absFreqSsb - 20 * 12 * subCarrierSpacing - Kssb * 15 - pointAData.absFreqPointA) / (15 * 12);
       } else {
+    // FR1的計算方式 - 保持原始公式不變
+    Kssb = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / 15;
+    offsetToPointA = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - pointAData.absFreqPointA) / (15 * 12);
+      }
+
+      // 修改CORESET0參數選擇邏輯
+      var coreset0RB, coreset0Symbols, coreset0Offset;
+      
+      if (bandInfo.band === 257) {
+        // FR2的CORESET0配置 - 根據表格13-8
         if (carrierBw >= 48) {
           coreset0RB = 48;
-          coreset0offset = 12;
-        } else if (carrierBw < 48 && carrierBw >= 24) {
+      coreset0Symbols = 2;
+      coreset0Offset = 14;
+        } else {
           coreset0RB = 24;
-          coreset0offset = 0;
+      coreset0Symbols = 2;
+      coreset0Offset = 0;
+        }
+      } else if (bandInfo.band === 79) {
+        // Band 79的特殊配置
+        coreset0RB = 48;
+        coreset0Symbols = 2;
+        coreset0Offset = 0;
+      } else {
+        // 其他FR1頻段的配置 - 根據表格13-4
+        if (carrierBw >= 48) {
+          coreset0RB = 48;
+      coreset0Symbols = 1;
+      coreset0Offset = 12;
+        } else {
+          coreset0RB = 24;
+          coreset0Symbols = 2;
+      coreset0Offset = 0;
         }
       }
 
-      // Validate the configuration
-      var isValid = (pointAData.nDlCenterFreq + carrierBw * 12 * subCarrierSpacing / 2 >= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0offset * 12 * subCarrierSpacing + coreset0RB * 12 * subCarrierSpacing) &&
-                   (pointAData.nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 <= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0offset * 12 * subCarrierSpacing);
+  // 恢復原始的驗證條件
+      var isValid;
+      if (bandInfo.band === 257) {
+    // FR2的驗證條件
+    isValid = (pointAData.nDlCenterFreq + carrierBw * 12 * subCarrierSpacing / 2 >= ssbData.absFreqSsb - 20 * 12 * subCarrierSpacing - Kssb * 15 - coreset0Offset * 12 * subCarrierSpacing + coreset0RB * 12 * subCarrierSpacing) &&
+             (pointAData.nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 <= ssbData.absFreqSsb - 20 * 12 * subCarrierSpacing - Kssb * 15 - coreset0Offset * 12 * subCarrierSpacing);
+      } else {
+    // FR1的驗證條件
+    isValid = (pointAData.nDlCenterFreq + carrierBw * 12 * subCarrierSpacing / 2 >= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0Offset * 12 * subCarrierSpacing + coreset0RB * 12 * subCarrierSpacing) &&
+             (pointAData.nDlCenterFreq - carrierBw * 12 * subCarrierSpacing / 2 <= ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * 15 - coreset0Offset * 12 * subCarrierSpacing);
+      }
 
       var resultDiv = document.getElementById("result");
       
       if (Kssb < 0 || !isValid) {
-        resultDiv.innerHTML += "<div class='error'>Warning: Configuration may not be valid (Kssb=" + Kssb + ", Valid=" + isValid + ")</div>";
+    resultDiv.innerHTML += "<div class='error'>Warning: Configuration may not be valid (Kssb=" + Kssb + ", Valid=" + isValid + ")</div>";
       }
 
-      // Display final results
+  // 顯示最終結果 - 保持與原始相同的格式
       resultDiv.innerHTML += "<div class='final-result'>";
       resultDiv.innerHTML += "<strong>Final Calculated Parameters:</strong><br>";
       resultDiv.innerHTML += "gscn=" + ssbData.gscn + ", ";
@@ -332,34 +463,60 @@
       resultDiv.innerHTML += "absArfcnSsb=" + ssbData.absArfcnSsb + ", ";
       resultDiv.innerHTML += "dlEarfcn=" + pointAData.dlEarfcn + ", ";
       resultDiv.innerHTML += "nDlCenterFreq=" + pointAData.nDlCenterFreq + ", ";
-      resultDiv.innerHTML += "Kssb=" + Kssb + ", ";
-      resultDiv.innerHTML += "offsetToPointA=" + offsetToPointA + ", ";
+  resultDiv.innerHTML += "Kssb=" + Kssb + ", ";
+  resultDiv.innerHTML += "offsetToPointA=" + offsetToPointA + ", ";
       resultDiv.innerHTML += "coreset0RB=" + coreset0RB + ", ";
-      resultDiv.innerHTML += "coreset0offset=" + coreset0offset;
+      resultDiv.innerHTML += "coreset0Symbols=" + coreset0Symbols + ", ";
+      resultDiv.innerHTML += "coreset0Offset=" + coreset0Offset;
       resultDiv.innerHTML += "</div>";
 
-      // Additional details
+  // 添加詳細的頻率計算信息用於調試
+  resultDiv.innerHTML += "<div class='closest-values'>";
+  resultDiv.innerHTML += "<strong>Frequency Analysis (for debugging):</strong><br>";
+  
+  if (bandInfo.band === 257) {
+    var ssbStartFreq = ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing;
+    var coresetStartFreq = ssbStartFreq - coreset0Offset * 12 * subCarrierSpacing;
+    var carrierStartFreq = pointAData.absFreqPointA;
+    var carrierEndFreq = carrierStartFreq + carrierBw * 12 * subCarrierSpacing;
+    
+    resultDiv.innerHTML += "SSB Start Freq: " + ssbStartFreq + " kHz<br>";
+    resultDiv.innerHTML += "CORESET Start Freq: " + coresetStartFreq + " kHz<br>";
+    resultDiv.innerHTML += "Carrier Start Freq: " + carrierStartFreq + " kHz<br>";
+    resultDiv.innerHTML += "Carrier End Freq: " + carrierEndFreq + " kHz<br>";
+    resultDiv.innerHTML += "CORESET within Carrier: " + 
+      (coresetStartFreq >= carrierStartFreq && 
+       (coresetStartFreq + coreset0RB * 12 * subCarrierSpacing) <= carrierEndFreq);
+  }
+  resultDiv.innerHTML += "</div>";
+
+  // Additional details
       resultDiv.innerHTML += "<div class='closest-values'>";
-      resultDiv.innerHTML += "<strong>CORESET0 Configuration Details:</strong><br>";
+      resultDiv.innerHTML += "<strong>Configuration Details:</strong><br>";
       if (bandInfo.band === 79) {
         if (carrierBw >= 106) {
           resultDiv.innerHTML += "Band n79 with BW≥106 RB → Using 38.213 Table 13-6 Index 4<br>";
         } else {
           resultDiv.innerHTML += "Band n79 with BW<106 RB → Using 38.213 Table 13-6 Index 4<br>";
         }
+      } else if (bandInfo.band === 257) {
+        resultDiv.innerHTML += "Band n257 (FR2) → Using FR2 configuration with SCS=120kHz<br>";
+        resultDiv.innerHTML += "FR2 uses different SSB pattern (20 symbols instead of 10)<br>";
+        resultDiv.innerHTML += "Using CORESET configuration from Table 13-8<br>";
       } else {
         if (carrierBw >= 48) {
-          resultDiv.innerHTML += "BW≥48 RB → Using 38.213 Table 13-4 Index 10 (Try to have 48 RB for CORESET0)<br>";
+          resultDiv.innerHTML += "BW≥48 RB → Using 38.213 Table 13-4 Index 10-15 (48 RB CORESET0)<br>";
         } else if (carrierBw >= 24) {
-          resultDiv.innerHTML += "24≤BW<48 RB → Using 38.213 Table 13-4 Index 0 (Best fit CORESET0)<br>";
+          resultDiv.innerHTML += "24≤BW<48 RB → Using 38.213 Table 13-4 Index 0-9 (24 RB CORESET0)<br>";
         } else {
-          resultDiv.innerHTML += "BW<24 RB → Using 38.213 Table 13-4 Index 0<br>";
+          resultDiv.innerHTML += "BW<24 RB → Using 38.213 Table 13-4 Index 0-9<br>";
         }
       }
       resultDiv.innerHTML += "<strong>Additional Information:</strong><br>";
       resultDiv.innerHTML += "Band: n" + bandInfo.band + "<br>";
       resultDiv.innerHTML += "Carrier Bandwidth: " + carrierBw + " RB<br>";
       resultDiv.innerHTML += "Subcarrier Spacing: " + subCarrierSpacing + " kHz<br>";
+      resultDiv.innerHTML += "SS/PBCH and PDCCH SCS: {" + subCarrierSpacing + ", " + subCarrierSpacing + "} kHz<br>";
       resultDiv.innerHTML += "Configuration Valid: " + (isValid && Kssb >= 0 ? "Yes" : "No");
       resultDiv.innerHTML += "</div>";
     }
@@ -367,13 +524,6 @@
 
   <h2>ssb_pointA_fix</h2>
   <div style="margin-bottom: 20px;">
-  
-  <style>
-    .author-info {
-      display: inline;
-      margin-right: 10px;
-    }
-  </style>
   <p class="author-info">Author: Dustin_Chen</p>
   <p class="author-info">Email: <a href="mailto:Dustin_Chen@compal.com">Dustin_Chen@compal.com</a></p>
   <p class="author-info">or <a href="mailto:chuhpsdustin@gmail.com">chuhpsdustin@gmail.com</a></p>
@@ -397,6 +547,16 @@
         <tr><td>20</td><td>51</td></tr>
         <tr><td>15</td><td>38</td></tr>
         <tr><td>10</td><td>24</td></tr>
+      </table>
+    </div>
+    <div class="inline-table">
+      <p><b>38.101-1 Table 5.3.2-1 SCS=120 (FR2)</b></p>
+      <table>
+        <tr><th>BW(MHz)</th><th>carrierBw(RB)</th></tr>
+        <tr><td>400</td><td>264</td></tr>
+        <tr><td>200</td><td>132</td></tr>
+        <tr><td>100</td><td>66</td></tr>
+        <tr><td>50</td><td>32</td></tr>
       </table>
     </div>
   </div>
@@ -431,10 +591,11 @@
   <div style="margin-top: 30px; font-size: 12px; color: #666;">
     <p><strong>Supported Bands:</strong></p>
     <ul>
-      <li>n41: 2496-2690 MHz</li>
-      <li>n48: 3550-3700 MHz</li>
-      <li>n78: 3300-3800 MHz</li>
-      <li>n79: 4400-5000 MHz</li>
+      <li>n41: 2496-2690 MHz (FR1, SCS=30kHz)</li>
+      <li>n48: 3550-3700 MHz (FR1, SCS=30kHz)</li>
+      <li>n78: 3300-3800 MHz (FR1, SCS=30kHz)</li>
+      <li>n79: 4400-5000 MHz (FR1, SCS=30kHz)</li>
+      <li>n257: 26500-29500 MHz (FR2, SCS=120kHz)</li>
     </ul>
   </div>
 
