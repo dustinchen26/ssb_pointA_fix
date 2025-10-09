@@ -388,29 +388,22 @@
     }
 
     function calculateAllParameters(ssbData, pointAData, carrierBw, subCarrierSpacing, offsetToCarrier, bandInfo) {
-      // Calculate Kssb and offsetToPointA
+      // Calculate Kssb and offsetToPointA using the correct formula
       var Kssb, offsetToPointA;
       
-      if (bandInfo.band === 257) {
-        // FR2的計算方式
-        var ssbStartFreq = ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing;
-        var ssbToPointADiff = ssbStartFreq - pointAData.absFreqPointA;
-        
-        // 計算offsetToPointA (以RB為單位)
-        offsetToPointA = Math.floor(ssbToPointADiff / (subCarrierSpacing * 12));
-        
-        // 計算Kssb (剩餘的子載波偏移)
-        var remainingOffset = ssbToPointADiff - offsetToPointA * subCarrierSpacing * 12;
-        Kssb = Math.round(remainingOffset / subCarrierSpacing);
-        
-        // 確保Kssb和offsetToPointA為非負整數
-        Kssb = Math.max(0, Kssb);
-        offsetToPointA = Math.max(0, offsetToPointA);
-      } else {
-        // FR1的計算方式
-        Kssb = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - pointAData.absFreqPointA) % (subCarrierSpacing * 12) / subCarrierSpacing;
-        offsetToPointA = (ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing - Kssb * subCarrierSpacing - pointAData.absFreqPointA) / (subCarrierSpacing * 12);
-      }
+      // 統一使用正確的公式計算Kssb和offsetToPointA
+      var ssbStartFreq = ssbData.absFreqSsb - 10 * 12 * subCarrierSpacing;
+      var diff = ssbStartFreq - pointAData.absFreqPointA;
+      
+      // 正確的Kssb計算 (使用15kHz)
+      Kssb = Math.round((diff % (subCarrierSpacing * 12)) / 15);
+      
+      // 計算offsetToPointA (使用15kHz)
+      offsetToPointA = Math.round((diff - Kssb * 15) / (15 * 12));
+      
+      // 確保Kssb和offsetToPointA為非負整數
+      Kssb = Math.max(0, Kssb);
+      offsetToPointA = Math.max(0, offsetToPointA);
 
       // Determine CORESET0 parameters
       var coreset0RB, coreset0offset;
@@ -536,19 +529,19 @@
     
     <div class="input-group">
       <label for="absFreqSsb">absFreqSsb (kHz):</label>
-      <input type="number" value="27533280" id="absFreqSsb" name="absFreqSsb" min="0">
+      <input type="number" value="3563040" id="absFreqSsb" name="absFreqSsb" min="0">
       <span style="font-size: 12px; color: #666;">(Target SSB frequency)</span>
     </div>
 
     <div class="input-group">
       <label for="absFreqPointA">absFreqPointA (kHz):</label>
-      <input type="number" value="27510240" id="absFreqPointA" name="absFreqPointA" min="0">
+      <input type="number" value="3554700" id="absFreqPointA" name="absFreqPointA" min="0">
       <span style="font-size: 12px; color: #666;">(Target Point A frequency)</span>
     </div>
 
     <div class="input-group">
       <label for="carrierBw">carrierBw (RB):</label>
-      <input type="number" value="32" id="carrierBw" name="carrierBw" min="1" max="1000">
+      <input type="number" value="273" id="carrierBw" name="carrierBw" min="1" max="1000">
       <span style="font-size: 12px; color: #666;">(Resource blocks for carrier bandwidth)</span>
     </div>
 
